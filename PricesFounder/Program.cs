@@ -10,9 +10,14 @@ namespace PricesFounder
     {
         static void Main(string[] args)
         {
-            Searcher searchDNS = new Searcher("https://www.dns-shop.ru");
+            Searcher searchDNS = new Searcher();
+            searchDNS.InitSearcher("https://www.dns-shop.ru");
 
-            searchDNS.KillSearcher();
+            var dnsStucture = searchDNS.GetSiteStructure();
+            SQL sql = new SQL();
+            sql.InsertToBase(dnsStucture);
+
+
             Console.ReadKey();
         }
     }
