@@ -10,15 +10,16 @@ namespace PricesFounder
 {
     class SQL
     {
-        string DatabaseName = "GlucoBase";
-        string ServerName = "GlucoServer";
+        readonly string DatabaseName = "GlucoBase";
+        readonly string ServerName = "GlucoServer";
         string ConnectionString;
 
         public SQL()
         {
-            ConnectionString= @"Data Source=.\GlucoServer;Initial Catalog=GlucoBase;Integrated Security=True";
+
+            ConnectionString= @"Data Source=.\"+ ServerName + ";Initial Catalog="+ DatabaseName + ";Integrated Security=True";
         }
-        public bool InsertToBase(Dictionary<string,string> data)
+        public bool InsertStructureUrlToBase(Dictionary<string,string> data)
         {
            
             using (SqlConnection connection = new SqlConnection(ConnectionString))
@@ -28,8 +29,8 @@ namespace PricesFounder
            
                 foreach (KeyValuePair<string, string> kvp in data)
                 {
-                    string sql = "INSERT INTO StructureUrls VALUES ";
-                    sql += "('" + kvp.Value + "'" + ", '" + kvp.Key + "')";
+                    string sql = "EXEC StructureUrlsAdd  ";
+                    sql += "'" + kvp.Value + "'" + ", '" + kvp.Key + "'";
                     SqlDataAdapter adapter = new SqlDataAdapter();
 
                     SqlCommand command = new SqlCommand(sql, connection);

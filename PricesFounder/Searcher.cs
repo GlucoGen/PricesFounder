@@ -46,7 +46,7 @@ namespace PricesFounder
             {
                 Driver.Close();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 foreach (var process in Process.GetProcessesByName("chromedriver"))
                 {
@@ -70,7 +70,7 @@ namespace PricesFounder
                 return true;
             }
 
-            catch (Exception e)
+            catch (Exception)
             {
                 return false;
                 //throw new Exception("Элемент не найден в течение " + timeout + " секунд: " + xpath);
@@ -121,7 +121,7 @@ namespace PricesFounder
                         {
                             Driver.Url = SiteUrl;
                         }
-                        catch (OpenQA.Selenium.WebDriverException e)
+                        catch (OpenQA.Selenium.WebDriverException)
                         {
                             InitSearcher(SiteUrl);
                         }
@@ -141,7 +141,7 @@ namespace PricesFounder
             {
                 Driver.Url = link;
             }
-            catch (OpenQA.Selenium.WebDriverException e)
+            catch (OpenQA.Selenium.WebDriverException)
             {
                 InitSearcher(link);
             }
@@ -166,7 +166,7 @@ namespace PricesFounder
                         {
                             Driver.Url = link;
                         }
-                        catch (OpenQA.Selenium.WebDriverException e)
+                        catch (OpenQA.Selenium.WebDriverException)
                         {
                             InitSearcher(link);
                         }
@@ -187,7 +187,7 @@ namespace PricesFounder
                 {
                     Driver.Url = prevUrl;
                 }
-                catch (OpenQA.Selenium.WebDriverException e)
+                catch (OpenQA.Selenium.WebDriverException)
                 {
                     InitSearcher(link);
                 }
@@ -197,20 +197,14 @@ namespace PricesFounder
             }
             else
             {
-                if (link == "https://www.dns-shop.ru/catalog/4fe024233ecb7fd7/aksessuary-k-plitam/")
-                { 
-                    int a = 2; 
-                }
                 try
                 {
                     Driver.Url = prevUrl;
                 }
-                catch (OpenQA.Selenium.WebDriverException e)
+                catch (OpenQA.Selenium.WebDriverException)
                 {
                     InitSearcher(link);
                 }
-                //Driver.Navigate().Back();
-                //Thread.Sleep(2000);
                 Dictionary<string, string> structure = new Dictionary<string, string>
                 {
                     { category, link }
