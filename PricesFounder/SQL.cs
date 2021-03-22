@@ -36,6 +36,7 @@ namespace PricesFounder
                     SqlCommand command = new SqlCommand(sql, connection);
                     adapter.InsertCommand = command;
                     adapter.InsertCommand.ExecuteNonQuery();
+                    connection.Close();
                 }
             }
             return true;
