@@ -19,17 +19,32 @@ namespace PricesChecker
             Searcher search = new Searcher();
             search.InitSearcher(siteName);
             search.SetCity(city);
+            List<Product> productData = new List<Product>();
 
             foreach (KeyValuePair<string, string> Link in goods)
             {
-                search.GoToUrl(Link.Key);
-                search.ExpandCategory();
-                Dictionary<string, string> productData = search.GetPricesFromCategory();
-                foreach (KeyValuePair<string, string> pd in productData)
+                int counter = 0;
+                while (counter < 3)
                 {
-                    sql.AddPrice(Link.Key, pd.Key, Link.Value, pd.Value,city, siteName);                    
+                    try
+                    {
+                        productData = search.GetPricesFromCategory(Link.Key);
+                        foreach (Product pd in productData)
+                        {
+                            sql.AddPrice(pd.Link, pd.Name, Link.Value, pd.Price, city, siteName);
+                        }
+                        sql.UpdateStructureUrls(Link.Key);
+                        counter = 3;
+                    }
+                    catch
+                    {
+                        search.InitSearcher(siteName);
+                        search.SetCity(city);
+                        counter++;
+                    }
                 }
-                sql.UpdateStructureUrls(Link.Key);
+
+                
             }
         }
     }

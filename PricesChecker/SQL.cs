@@ -21,6 +21,7 @@ namespace PricesChecker
             ConnectionString = @"Data Source=.\" + ServerName + ";Initial Catalog=" + DatabaseName + ";Integrated Security=True";
         }
 
+        //получение списка категорий, которые не обновлялись сегодня
         public Dictionary<string,string> GetActualGoodsFromBase()
         {
 
@@ -51,6 +52,7 @@ namespace PricesChecker
             }
         }
 
+        //добавление информации о товара в таблицу Prices
         public void AddPrice(string link, string name, string category, string priceText,string city, string site)
         {
             using (SqlConnection connection = new SqlConnection(ConnectionString))
@@ -59,6 +61,8 @@ namespace PricesChecker
 
                 string priceTextNew = priceText.Substring(0, priceText.IndexOf('₽'));
                 decimal price = Convert.ToDecimal(priceTextNew.Replace("₽","").Trim());
+
+                name = name.Replace("'", "");
 
                 string sql = "EXEC PricesAdd ";
                 sql += "'" + link + "'" + ", '" + name + "'" + ", '" + category + "'" + ","  + price + ", '" + city + "'" + ", '" + site + "'";
@@ -71,6 +75,7 @@ namespace PricesChecker
             }
         }
 
+        //Обновление даты в таблице StructureUrls
         public void UpdateStructureUrls(string link)
         {
             using (SqlConnection connection = new SqlConnection(ConnectionString))

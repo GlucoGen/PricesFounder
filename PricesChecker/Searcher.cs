@@ -11,195 +11,149 @@ using System.Threading.Tasks;
 
 namespace PricesChecker
 {
+
+    //структура товара - имя, ссылка, цена
+    struct Product
+    {
+        public string Name;
+        public string Link;
+        public string Price;
+    }
+
     class Searcher
     {
         private string SiteUrl;
-        private IWebDriver Driver;
-        private string ChromeDriverPath = @"D:\Chromedriver\88";
+        Chrome chrome;
         Dictionary<string, string> Prices = new Dictionary<string, string>();
         int shortTimeout = 5;
+        int longTimeout = 120;
 
+        //инициализация
         public void InitSearcher(string url)
         {
-            KillSearcher();
-            //Убиваем Хром
-
             SiteUrl = url;
-
-            //запускаем Хром
-            ChromeOptions options = new ChromeOptions();
-            options.AddArgument("--start-maximized");
-            ChromeDriverService driverService = ChromeDriverService.CreateDefaultService(ChromeDriverPath);
-            driverService.HideCommandPromptWindow = true;
-
-            TimeSpan timeout = new TimeSpan(0, 5, 0);
-
-            Driver = new ChromeDriver(driverService, options, timeout);
-            Driver.Navigate().GoToUrl(SiteUrl);
+            chrome = new Chrome(SiteUrl);        
         }
 
-
-        protected void KillSearcher()
+        //метод получения всех товаров со всех страниц, перелистывает их по очереди
+        public List<Product> GetPricesFromCategory(string link)
         {
-            try
-            {
-                Driver.Close();
-            }
-            catch (Exception)
-            {
-                foreach (var process in Process.GetProcessesByName("chromedriver"))
-                {
-                    process.Kill();
-                }
+            List<Product> productData = new List<Product>();
+            string pageTamplate = "//a[@class='pagination-widget__page-link' and text()='@PAGE@']";
+            int j = 1;
+            int counter = 0;
 
-                foreach (var process in Process.GetProcessesByName("chrome"))
-                {
-                    process.Kill();
-                }
-            }
+           chrome.GoToUrl(link);
 
-        }
-
-        protected bool WaitElement(string xpath, int timeout)
-        {
-            try
-            {
-                var wait = new WebDriverWait(Driver, TimeSpan.FromSeconds(timeout));
-                IWebElement element = wait.Until(d => d.FindElements(By.XPath(xpath)).FirstOrDefault());
-                return true;
-            }
-
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        protected void Click(string xpath, int timeout)
-        {
-            if (WaitElement(xpath, timeout))
+            while (counter < 3)
             {
                 try
                 {
-                    Driver.FindElement(By.XPath(xpath)).Click();
-                }
-                catch (StaleElementReferenceException)
-                {
-                    Thread.Sleep(2000);
-                    Driver.FindElement(By.XPath(xpath)).Click();
-                }
-                return;
-            }
-            throw new Exception("Не удалось кликнуть. Элемент не найден в течение " + timeout + " секунд: " + xpath);
-        }
-
-        public void GoToUrl(string link)
-        {
-            //Driver.Url = link;
-            Driver.Navigate().GoToUrl(link);
-        }
-
-        protected string GetText(string xpath, int timeout)
-        {
-            if (WaitElement(xpath, timeout))
-            {
-                return Driver.FindElement(By.XPath(xpath)).Text;
-            }
-
-            throw new Exception("Не удалось считать текст. Элемент не найден в течение " + timeout + " секунд: " + xpath);
-        }
-
-        public Dictionary<string, string> GetPricesFromCategory()
-        {
-            Dictionary<string, string> productData = new Dictionary<string, string>();         
-            int i = 1;
-    
-            string nameTemplate = "(//div[@data-id='product'])[@NAME@]/a/span";
-            string priceTemplate = "((//div[@data-id='product'])[@NAME@]//div[contains(@class,'product-buy__price')])[last()]";
-            string allItems = "//div[@data-id='product']";
-
-            //надо вынести проверку числа в отдельный метод, который повторно вызывает разворачивание в случае неравенства
-            if (WaitElement(allItems, shortTimeout))
-            {
-                int countItems = CheckCount();
-                var totalItems = Driver.FindElements(By.XPath(allItems));
-
-                if (totalItems.Count == countItems)
-                {
-                    string curElement = nameTemplate.Replace("@NAME@", "" + i);
-
-                    while (WaitElement(curElement, shortTimeout))
+                    string currentPage = pageTamplate.Replace("@PAGE@", j.ToString());
+                    while (chrome.WaitElement(currentPage, 5))
                     {
-                        string curPrice = priceTemplate.Replace("@NAME@", "" + i);
-
-                        IWebElement NameElement = Driver.FindElement(By.XPath(curElement));
-                        string name = NameElement.Text;
-
-                        IWebElement PriceElement = Driver.FindElement(By.XPath(curPrice));
-                        string price = PriceElement.Text;
-
-                        productData.Add(name, price);
-
-                        i++;
-                        curElement = nameTemplate.Replace("@NAME@", "" + i);
+                        chrome.Click(currentPage, 5);
+                        chrome.Sleep(2);
+                        List<Product> structureTMP = GetAllPricesAndNames();
+                        productData.AddRange(structureTMP);
+                        counter = 0;
+                        j++;
+                        currentPage = pageTamplate.Replace("@PAGE@", j.ToString());
                     }
-
-
-                    return productData;
+                    if (j == 1)
+                    {
+                        List<Product> structureTMP = GetAllPricesAndNames();
+                        productData.AddRange(structureTMP);
+                    }
+                    counter = 3;
                 }
-                return null;
-            }
+                catch
+                {
+                    chrome.UpdateCurentLink();
+                    chrome.Sleep(2);
+                    counter++;
+                }
 
-            return null;
+            }
+            return productData;
         }
 
-        protected int CheckCount()
+        //метод получения всех товаров с одной страницы
+        public List<Product> GetAllPricesAndNames()
         {
-            string count = "//span[@data-role='items-count']";
-            if (WaitElement(count, shortTimeout))
+            int i = 1;
+            List <Product> products = new List<Product>();
+
+            string nameTemplate = "(//div[@data-id='product'])[@NAME@]/a/span";
+            string hrefTemplate = "(//div[@data-id='product'])[@NAME@]/a";
+            string priceTemplate = "((//div[@data-id='product'])[@NAME@]//div[contains(@class,'product-buy__price')])[last()]";
+            string curElement = nameTemplate.Replace("@NAME@", i.ToString());
+            string curHref = hrefTemplate.Replace("@NAME@", i.ToString());
+
+            while (chrome.WaitElement(curElement, shortTimeout))
             {
-               string countText = GetText(count, shortTimeout);
-               string productsCount = countText.Split(' ')[0];
-               int countGoods = Convert.ToInt32(productsCount);
+                string curPrice = priceTemplate.Replace("@NAME@", i.ToString());
 
-               return countGoods;
+                IWebElement NameElement = chrome.FindElement(curElement);
+                string name = NameElement.Text;
 
+                chrome.WaitElement(curPrice, longTimeout);
+                IWebElement PriceElement = chrome.FindElement(curPrice);
+                string price = PriceElement.Text;
+                if (price.Trim().Length == 0)
+                {
+                    chrome.Refresh();
+                    chrome.Sleep(2);
+                    chrome.WaitElement(curPrice, longTimeout);
+                    PriceElement = chrome.FindElement(curPrice);
+                    price = PriceElement.Text;
+                }
+
+                chrome.WaitElement(curHref, shortTimeout);
+                IWebElement hrefElement = chrome.FindElement(curHref);
+                string href= hrefElement.GetAttribute("href");
+
+                Product curProduct = new Product();
+                curProduct.Name = name;
+                curProduct.Link = href;
+                curProduct.Price = price;
+
+                if (!products.Contains(curProduct)) products.Add(curProduct);
+                //if (!productData.ContainsKey(name)) productData.Add(name, price);
+
+                i++;
+                curElement = nameTemplate.Replace("@NAME@", i.ToString());
+                curHref = hrefTemplate.Replace("@NAME@", i.ToString());
             }
-            return 0;
+
+
+            return products;
         }
+  
 
-            
-            public void SetCity(string city)
+        //метод установки текущего города, нажимает на Выбрать другой    
+        public void SetCity(string city)
         {
-            string chooseCity = "//a[text()='Выбрать другой']";
+            string chooseCity = "//a[text()='Выбрать другой']";        
 
-            if (WaitElement(chooseCity, 10))
+            if (chrome.WaitElement(chooseCity, 10))
             {
                 SetInputCity(chooseCity,city);
             }
         }
 
+        //метод установки текущего города, выбирает нужный город 
         protected void SetInputCity(string chooseCity, string city)
         {
             string inputCity = "//input[@data-role='search-city']";
-            Click(chooseCity, shortTimeout);
-            Thread.Sleep(1000);
-            if (WaitElement(chooseCity, shortTimeout))
+            chrome.Click(chooseCity, shortTimeout);
+            chrome.Sleep(5);
+            if (chrome.WaitElement(inputCity, shortTimeout))
             {
-                IWebElement element = Driver.FindElement(By.XPath(inputCity));
+                IWebElement element = chrome.FindElement(inputCity);
                 element.SendKeys(city);
                 element.SendKeys(Keys.Enter);
-                Thread.Sleep(5000);
-            }
-        }
-        public void ExpandCategory()
-        {
-            string showMoreButton = "//button[@data-role='show-more-btn']";
-
-            while (WaitElement(showMoreButton, shortTimeout))
-            {
-                Click(showMoreButton,10);
-                Thread.Sleep(2000);
+                chrome.Sleep(5);
             }
         }
     }
