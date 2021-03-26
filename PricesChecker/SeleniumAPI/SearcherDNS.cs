@@ -57,7 +57,7 @@ namespace PricesChecker
 
             chrome.GoToUrl(link);
 
-            string textCount = chrome.GetText(totalProductsInCategoryXPath).Split(' ')[0];
+            string textCount = chrome.GetText(totalProductsInCategoryXPath,shortTimeout).Split(' ')[0];
             if (!Int32.TryParse(textCount, out int totalProducts)) throw new Exception("Не удалось взять количество продуктов в категории  :" + totalProductsInCategoryXPath);
 
             if (totalProducts > maxElementsOnPage)
@@ -77,10 +77,20 @@ namespace PricesChecker
                     {
                         if (j != 1) firstName = chrome.GetText(firstNameXPath, shortTimeout);
 
+                        if (firstName.Contains("'"))
+                        {
+                            firstName = firstName.Substring(0, firstName.IndexOf("'"));
+                        }
                         string fistNameXPath = newFistNameXPathTemplate.Replace("@NAME@", firstName);
+                       
 
                         chrome.Click(currentPage, shortTimeout);
-                        chrome.WaitElement(fistNameXPath, shortTimeout);
+
+
+                        if (!chrome.WaitElement(fistNameXPath, shortTimeout))
+                        {
+                            throw new Exception("Не удалось взять первый товар на странице: " + fistNameXPath);
+                        }
 
                         List<Product> structureTMP = GetPricesFromOnePage();
                         productData.AddRange(structureTMP);
@@ -143,6 +153,11 @@ namespace PricesChecker
                 string currentPrice = priceTemplate.Replace("@NAME@", i.ToString());
 
                 string price = chrome.GetText(currentPrice, shortTimeout * 2);
+                if (price.Length == 0)
+                {
+                    chrome.Sleep(1);
+                    price = chrome.GetText(currentPrice, shortTimeout * 2);
+                }
                 string href= chrome.GetAttribute(currentHref,"href", shortTimeout * 2);
 
                 Product curProduct = new Product(name, href, price);

@@ -64,7 +64,7 @@ namespace PricesChecker
                 return false;
             }
         }
-
+        
         public void Click(string xpath, int timeout)
         {
             if (WaitElement(xpath, timeout))
