@@ -18,6 +18,13 @@ namespace PricesChecker
         public string Name;
         public string Link;
         public string Price;
+
+        public Product(string name, string link, string price)
+        {
+            Name = name;
+            Link = link;
+            Price = price;
+        }
     }
 
     class SearcherDNS
@@ -35,37 +42,57 @@ namespace PricesChecker
         }
 
         //метод получения всех товаров со всех страниц, перелистывает их по очереди
-        public List<Product> GetPricesFromCategory(string link)
+        public List<Product> GetPricesFromCategory(string link,int maxElementsOnPage)
         {
             List<Product> productData = new List<Product>();
             string pageTamplate = "//a[@class='pagination-widget__page-link' and text()='@PAGE@']";
             string firstNameXPath = "(//div[@data-id='product'])[1]/a/span";
-            string newFistNameXPathTemplate = "(//div[@data-id='product'])[1]/a/span ant not(text()='@NAME@')";
-            int j = 1;
+            string newFistNameXPathTemplate = "(//div[@data-id='product'])[1]/a/span[not(text()='@NAME@')]";
+            string totalPagesXPath = "//ul[@class='pagination-widget__pages']/li[last()]";
+            string totalProductsInCategoryXPath = "//span[@data-role='items-count']";
+            int j = 0;
             int counter = 0;
+            string firstName = "";
+            int totalPages = 0;
 
-           chrome.GoToUrl(link);
+            chrome.GoToUrl(link);
 
-            while (counter < 3)
+            string textCount = chrome.GetText(totalProductsInCategoryXPath).Split(' ')[0];
+            if (!Int32.TryParse(textCount, out int totalProducts)) throw new Exception("Не удалось взять количество продуктов в категории  :" + totalProductsInCategoryXPath);
+
+            if (totalProducts > maxElementsOnPage)
+            {
+                j = 1;
+                totalPages = Convert.ToInt32(chrome.GetAttribute(totalPagesXPath, "data-page-number", shortTimeout));
+            }
+            //if (chrome.WaitElement(totalPagesXPath,shortTimeout)) totalPages = Convert.ToInt32(chrome.GetAttribute(totalPagesXPath, "data-page-number", shortTimeout));
+
+          while (counter < 3) 
             {
                 try
                 {
                     string currentPage = pageTamplate.Replace("@PAGE@", j.ToString());
-                    while (chrome.WaitElement(currentPage, shortTimeout))
-                    {
-                        string firstName = chrome.GetText(firstNameXPath);
-                        string fistNameXPath = newFistNameXPathTemplate.Replace("@NAME@", firstName);
-                        chrome.Click(currentPage, shortTimeout);
 
-                        chrome.WaitElement(fistNameXPath,5);
-                        //chrome.Sleep(2);
+                    while ((j>0) && (j<= totalPages))
+                    {
+                        if (j != 1) firstName = chrome.GetText(firstNameXPath, shortTimeout);
+
+                        string fistNameXPath = newFistNameXPathTemplate.Replace("@NAME@", firstName);
+
+                        chrome.Click(currentPage, shortTimeout);
+                        chrome.WaitElement(fistNameXPath, shortTimeout);
+
                         List<Product> structureTMP = GetPricesFromOnePage();
                         productData.AddRange(structureTMP);
+
                         counter = 0;
                         j++;
+                       
                         currentPage = pageTamplate.Replace("@PAGE@", j.ToString());
-                    }
-                    if (j == 1)
+                        totalPages = Convert.ToInt32(chrome.GetAttribute(totalPagesXPath, "data-page-number",shortTimeout));
+                    } 
+
+                    if (j == 0)
                     {
                         List<Product> structureTMP = GetPricesFromOnePage();
                         productData.AddRange(structureTMP);
@@ -74,14 +101,19 @@ namespace PricesChecker
                 }
                 catch(Exception e)
                 {
-                    Console.WriteLine(e.Message);
-                    chrome.UpdateCurentLink();
-                    //chrome.Sleep(2);
+                    Console.WriteLine(e.StackTrace+" || "+DateTime.Now+" || "+e.Message);
+                    chrome.Refresh();
+                    //chrome.UpdateCurentLink();
                     counter++;
                 }
-
             }
-            return productData;
+
+            if (productData.Count != totalProducts)
+            {
+                throw new Exception("Не удалось взять все продукты из категории по ссылке: " + link + " Взято " + productData.Count + " из " + totalProducts + " товаров");
+            }
+
+             return productData;
         }
 
         //метод получения всех товаров с одной страницы
@@ -92,74 +124,57 @@ namespace PricesChecker
 
             string nameTemplate = "(//div[@data-id='product'])[@NAME@]/a/span";
             string hrefTemplate = "(//div[@data-id='product'])[@NAME@]/a";
-            string priceTemplate = "((//div[@data-id='product'])[@NAME@]//div[contains(@class,'product-buy__price')])[last()]";
-            string curElement = nameTemplate.Replace("@NAME@", i.ToString());
-            string curHref = hrefTemplate.Replace("@NAME@", i.ToString());
+            string priceTemplate = "((//div[@data-id='product'])[@NAME@]//div[contains(@class,'product-buy__price') and text()])[last()]";
+            string currentElement = nameTemplate.Replace("@NAME@", i.ToString());
+            string currentHref = hrefTemplate.Replace("@NAME@", i.ToString());
+            string totalProductsXpath = "(//div[@data-id='product'])";
 
-            while (chrome.WaitElement(curElement, shortTimeout))
+            chrome.WaitElement(totalProductsXpath, shortTimeout);
+            int totalPages = chrome.CountElements(totalProductsXpath);
+
+
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
+            while (i <= totalPages)
             {
-                string curPrice = priceTemplate.Replace("@NAME@", i.ToString());
 
-                IWebElement NameElement = chrome.FindElement(curElement);
-                string name = NameElement.Text;
+                string name = chrome.GetText(currentElement, shortTimeout * 2);
+                string currentPrice = priceTemplate.Replace("@NAME@", i.ToString());
 
-                chrome.WaitElement(curPrice, longTimeout);
-                IWebElement PriceElement = chrome.FindElement(curPrice);
-                string price = PriceElement.Text;
-                if (price.Trim().Length == 0)
-                {
-                    chrome.Refresh();
-                    chrome.Sleep(2);
-                    chrome.WaitElement(curPrice, longTimeout);
-                    PriceElement = chrome.FindElement(curPrice);
-                    price = PriceElement.Text;
-                }
+                string price = chrome.GetText(currentPrice, shortTimeout * 2);
+                string href= chrome.GetAttribute(currentHref,"href", shortTimeout * 2);
 
-                chrome.WaitElement(curHref, shortTimeout);
-                IWebElement hrefElement = chrome.FindElement(curHref);
-                string href= hrefElement.GetAttribute("href");
-
-                Product curProduct = new Product();
-                curProduct.Name = name;
-                curProduct.Link = href;
-                curProduct.Price = price;
+                Product curProduct = new Product(name, href, price);
 
                 if (!products.Contains(curProduct)) products.Add(curProduct);
 
                 i++;
-                curElement = nameTemplate.Replace("@NAME@", i.ToString());
-                curHref = hrefTemplate.Replace("@NAME@", i.ToString());
+                currentElement = nameTemplate.Replace("@NAME@", i.ToString());
+                currentHref = hrefTemplate.Replace("@NAME@", i.ToString());
             }
 
+            stopWatch.Stop();
+            TimeSpan ts = stopWatch.Elapsed;
+            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts.Hours, ts.Minutes, ts.Seconds,
+            ts.Milliseconds / 10);
+
+            Console.WriteLine("Время парсинга страницы = " + elapsedTime);
 
             return products;
         }
   
 
         //метод установки текущего города, нажимает на Выбрать другой    
-        public void SetCity(string city)
+        public void SetCity(string cityId)
         {
-            string chooseCity = "//a[text()='Выбрать другой']";        
-
-            if (chrome.WaitElement(chooseCity, 10))
-            {
-                SetInputCity(chooseCity,city);
-            }
+            string js = "setCity('" + cityId + "')";
+            chrome.executeJS(js);
+            chrome.Sleep(1);
+            chrome.Refresh();
         }
 
-        //метод установки текущего города, выбирает нужный город 
-        protected void SetInputCity(string chooseCity, string city)
-        {
-            string inputCity = "//input[@data-role='search-city']";
-            chrome.Click(chooseCity, shortTimeout);
-            chrome.Sleep(5);
-            if (chrome.WaitElement(inputCity, shortTimeout))
-            {
-                IWebElement element = chrome.FindElement(inputCity);
-                element.SendKeys(city);
-                element.SendKeys(Keys.Enter);
-                chrome.Sleep(5);
-            }
-        }
+
     }
 }

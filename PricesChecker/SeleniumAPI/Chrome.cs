@@ -14,7 +14,7 @@ namespace PricesChecker
     class Chrome
     {
         private IWebDriver Driver;
-        private string ChromeDriverPath = @"C:\Users\Professional\source\repos\PricesFounder — копия\PricesChecker\SeleniumAPI\88\chromedriver.exe";
+        private string ChromeDriverPath = @"D:\Chromedriver\88";
 
         public Chrome(string url)
         {
@@ -133,6 +133,16 @@ namespace PricesChecker
         {
             return Driver.FindElement(By.XPath(xpath));           
         }
+
+        public IWebElement FindElement(string xpath,int timeout)
+        {
+            if (WaitElement(xpath, timeout))
+            {
+                return Driver.FindElement(By.XPath(xpath));
+            }
+            throw new Exception("Не удалось получить за "+timeout+"секунд элемент: " + xpath);
+        }
+
         public void Refresh()
         {
             Driver.Navigate().Refresh();
@@ -148,5 +158,28 @@ namespace PricesChecker
         {
             Thread.Sleep(seconds*1000);
         }
+
+        public string GetAttribute(string xpath, string attributeName,int timeout)
+        {
+            if (WaitElement(xpath, timeout))
+            {
+                return Driver.FindElement(By.XPath(xpath)).GetAttribute(attributeName);
+            }
+           
+            throw new Exception("Не удалось взять атрибут "+attributeName+". Элемент не найден в течение " + timeout + " секунд: " + xpath);
+        }
+
+        public int CountElements(string xpath)
+        {
+            var elements = Driver.FindElements(By.XPath(xpath));
+            return elements.Count;
+        }
+
+        public void executeJS(string js)
+        {
+            IJavaScriptExecutor scriptExecutor = (IJavaScriptExecutor)Driver;
+            scriptExecutor.ExecuteScript(js);
+        }
+
     }
 }
