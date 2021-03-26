@@ -44,7 +44,7 @@ namespace PricesChecker
                         }
 
                         databaseDNS.UpdateStructureUrls(category.Key);
-                        continue;
+                        break;
                     }
                     catch (Exception e)
                     {

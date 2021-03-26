@@ -46,8 +46,8 @@ namespace PricesChecker
         {
             List<Product> productData = new List<Product>();
             string pageTamplate = "//a[@class='pagination-widget__page-link' and text()='@PAGE@']";
-            string firstNameXPath = "(//div[@data-id='product'])[1]/a/span";
-            string newFistNameXPathTemplate = "(//div[@data-id='product'])[1]/a/span[not(text()='@NAME@')]";
+            string firstNameXPath = "(//div[@data-id='product'])[1]";
+            string newFistNameXPathTemplate = "(//div[@data-id='product'])[1][not(@data-product='@NAME@')]";
             string totalPagesXPath = "//ul[@class='pagination-widget__pages']/li[last()]";
             string totalProductsInCategoryXPath = "//span[@data-role='items-count']";
             int j = 0;
@@ -75,12 +75,9 @@ namespace PricesChecker
 
                     while ((j>0) && (j<= totalPages))
                     {
-                        if (j != 1) firstName = chrome.GetText(firstNameXPath, shortTimeout);
+                        if (j != 1) firstName = chrome.GetAttribute(firstNameXPath, "data-product", shortTimeout);
 
-                        if (firstName.Contains("'"))
-                        {
-                            firstName = firstName.Substring(0, firstName.IndexOf("'"));
-                        }
+  
                         string fistNameXPath = newFistNameXPathTemplate.Replace("@NAME@", firstName);
                        
 
