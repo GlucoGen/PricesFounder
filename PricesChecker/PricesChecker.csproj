@@ -47,15 +47,21 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Chrome.cs" />
+    <Compile Include="SeleniumAPI\Chrome.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Searcher.cs" />
-    <Compile Include="SQL.cs" />
+    <Compile Include="Bots\SearcherDNS.cs" />
+    <Compile Include="DatabaseDNS.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Parsers\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="SeleniumAPI\88\chromedriver.exe" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

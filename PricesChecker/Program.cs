@@ -11,35 +11,34 @@ namespace PricesChecker
     {
         static void Main(string[] args)
         {
-            SQL sql = new SQL();
+            DatabaseDNS databaseDNS = new DatabaseDNS();
             string siteName = "https://www.dns-shop.ru";
             string city = "Барнаул";
 
-            Dictionary<string, string> goods = sql.GetActualGoodsFromBase();
-            Searcher search = new Searcher();
-            search.InitSearcher(siteName);
-            search.SetCity(city);
-            List<Product> productData = new List<Product>();
+            Dictionary<string, string> categories = databaseDNS.GetActualCategoriesFromBase();
+            SearcherDNS searcherDNS = new SearcherDNS();
+            searcherDNS.InitSearcher(siteName);
+            searcherDNS.SetCity(city);
 
-            foreach (KeyValuePair<string, string> Link in goods)
+            foreach (KeyValuePair<string, string> category in categories)
             {
                 int counter = 0;
                 while (counter < 3)
                 {
                     try
                     {
-                        productData = search.GetPricesFromCategory(Link.Key);
-                        foreach (Product pd in productData)
+                        var productData = searcherDNS.GetPricesFromCategory(category.Key);
+                        foreach (Product product in productData)
                         {
-                            sql.AddPrice(pd.Link, pd.Name, Link.Value, pd.Price, city, siteName);
+                            databaseDNS.AddPrice(product.Link, product.Name, category.Value, product.Price, city, siteName);
                         }
-                        sql.UpdateStructureUrls(Link.Key);
+                        databaseDNS.UpdateStructureUrls(category.Key);
                         counter = 3;
                     }
                     catch
                     {
-                        search.InitSearcher(siteName);
-                        search.SetCity(city);
+                        searcherDNS.InitSearcher(siteName);
+                        searcherDNS.SetCity(city);
                         counter++;
                     }
                 }
